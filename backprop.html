@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Perceptron Backpropagation</title>
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+    
+    <!-- CSS Styling -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 8px;
+            margin-top: 2em;
+        }
+        
+        h3 {
+            color: #7f8c8d;
+            margin-top: 1.5em;
+        }
+        
+        .math-display {
+            margin: 1em 0;
+            text-align: center;
+        }
+        
+        .boxed {
+            border: 2px solid #3498db;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 1em 0;
+            background-color: #f8f9fa;
+        }
+        
+        ul, ol {
+            padding-left: 1.5em;
+        }
+        
+        li {
+            margin: 0.5em 0;
+        }
+        
+        strong {
+            color: #2c3e50;
+        }
+        
+        code {
+            background-color: #f1f2f6;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        
+        .step {
+            margin: 1em 0;
+        }
+        
+        .highlight {
+            background-color: #fff3cd;
+            padding: 0.5em;
+            border-left: 4px solid #ffc107;
+            margin: 1em 0;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Single perceptron</h1>
+<p>Math for single-perceptron (no hidden layer) version with a differentiable loss and explicit chain-rule gradients.</p>
+
+<h2><strong>Setup:</strong></h2>
+<p>$x\in\mathbb{R}^d$ (input), scalar output;</p>
+
+<p>nonlinearity/output map $\psi:\mathbb{R}\!\to\!\mathbb{R}$ (e.g., identity, sigmoid), target $y\in\mathbb{R}$.</p>
+
+<p>Loss $J=\mathcal{L}(\hat y,y)$ is differentiable.</p>
+
+<p>Because the pre-activation is scalar $z\in\mathbb{R}$, from $z = w^\top x + b$:</p>
+
+$$
+(1)=(1\times d)(d\times 1)\;\Rightarrow\; w\in\mathbb{R}^{d},\quad b\in\mathbb{R}
+$$
+
+<h2>Forward pass</h2>
+
+$$z = w^\top x + b \quad\text{(Affine)}$$
+
+$$\hat y = \psi(z) \quad\text{(Output map)}$$
+
+<h2>Chain-rule derivations</h2>
+
+<h3>1) Error signal w.r.t. $z$</h3>
+
+$$\frac{\partial J}{\partial z} = \frac{\partial J}{\partial \hat y}\cdot \frac{\partial \hat y}{\partial z} \quad\Rightarrow\quad \boxed{\frac{\partial J}{\partial z} = \delta = \frac{\partial J}{\partial \hat y}\,\psi'(z) \quad (1)}$$
+
+<h3>2) Weight gradient</h3>
+<p>Start from the chain rule with $z=z(w)=w^\top x+b$:</p>
+
+$$\frac{\partial J}{\partial w} = \frac{\partial J}{\partial z}\cdot \frac{\partial z}{\partial w}$$
+
+<ul>
+<li>Compute each factor:
+  <ul>
+    <li>$\frac{\partial J}{\partial z}=\delta$ (from Step 1).</li>
+    <li>$\frac{\partial z}{\partial w} = x$ (since $z=\sum_i w_i x_i + b$).</li>
+  </ul>
+</li>
+</ul>
+
+<p>Therefore,</p>
+
+$$\boxed{\frac{\partial J}{\partial w} = \delta\, x \quad (d)}$$
+
+<p><strong>Elementwise check</strong> (for component $i$):</p>
+
+$$\frac{\partial J}{\partial w_i} = \underbrace{\frac{\partial J}{\partial z}}_{\delta}\cdot \underbrace{\frac{\partial z}{\partial w_i}}_{x_i} = \delta\,x_i$$
+
+<h3>3) Bias gradient</h3>
+<p>Again by the chain rule with $z=z(b)=w^\top x+b$:</p>
+
+$$\frac{\partial J}{\partial b} = \frac{\partial J}{\partial z}\cdot \frac{\partial z}{\partial b}$$
+
+<ul>
+<li>$\frac{\partial J}{\partial z}=\delta$,</li>
+<li>$\frac{\partial z}{\partial b}=1$.</li>
+</ul>
+
+<p>Therefore,</p>
+
+$$\boxed{\frac{\partial J}{\partial b} = \delta \quad (1)}$$
+
+<h2>Sanity checks for common losses</h2>
+
+<h2>1) Regression (identity output) + MSE</h2>
+
+<h3>Scalar perceptron</h3>
+<ul>
+<li>Affine: $z = w^\top x + b \in \mathbb{R}$</li>
+<li>Output map: $\hat y = \psi(z) = z$  (identity)</li>
+<li>Loss: $J = \tfrac12(\hat y - y)^2$</li>
+</ul>
+
+<h3>Derivatives</h3>
+<div class="step">
+<p>1) Gradient of loss wrt prediction:</p>
+$$\frac{\partial J}{\partial \hat y}
+= \frac{\partial}{\partial \hat y}\,\frac12(\hat y-y)^2
+= \hat y - y.$$
+</div>
+
+<div class="step">
+<p>2) Chain rule from $\hat y$ to $z$ (identity):</p>
+$$\frac{\partial \hat y}{\partial z} = 1.$$
+</div>
+
+<div class="step">
+<p>3) Error signal (explicit chain rule):</p>
+$$\boxed{
+\frac{\partial J}{\partial z}
+= \frac{\partial J}{\partial \hat y}\cdot \frac{\partial \hat y}{\partial z}
+= (\hat y-y)\cdot 1
+= \hat y - y
+}
+\;\;\equiv\;\delta.$$
+</div>
+
+<div class="step">
+<p>4) Parameter gradients:</p>
+$$\frac{\partial J}{\partial w} = \delta\, x,\qquad
+\frac{\partial J}{\partial b} = \delta.$$
+</div>
+
+<h2>Vector output (identity + MSE)</h2>
+<ul>
+<li>Affine: $z = Wx + b \in \mathbb{R}^k$, $W\in\mathbb{R}^{k\times d}, b\in\mathbb{R}^k$</li>
+<li>Output: $\hat y = z$</li>
+<li>Loss: $J=\tfrac12\|\hat y - y\|_2^2 = \tfrac12\sum_{i=1}^k (\hat y_i - y_i)^2$</li>
+</ul>
+
+<h3>Derivatives</h3>
+<div class="step">
+<p>1) Loss wrt prediction (vector):</p>
+$$\nabla_{\hat y} J = \hat y - y \;\in\; \mathbb{R}^k.$$
+</div>
+
+<div class="step">
+<p>2) Jacobian of identity: $J_\psi(z) = I_k$.</p>
+</div>
+
+<div class="step">
+<p>3) Error signal (Jacobian chain rule):</p>
+$$\boxed{
+\frac{\partial J}{\partial z}
+= J_\psi(z)^\top\, \nabla_{\hat y} J
+= I_k^\top(\hat y - y)
+= \hat y - y
+}
+\;\;\equiv\;\delta\in\mathbb{R}^k.$$
+</div>
+
+<div class="step">
+<p>4) Parameter gradients:</p>
+$$\frac{\partial J}{\partial W} = \delta\, x^\top \in \mathbb{R}^{k\times d},
+\qquad
+\frac{\partial J}{\partial b} = \delta \in \mathbb{R}^k.$$
+</div>
+
+<h2>2) Logistic (sigmoid output) + Binary Cross-Entropy (BCE)</h2>
+
+<h3>Scalar perceptron (binary)</h3>
+<ul>
+<li>Affine: $z = w^\top x + b$</li>
+<li>Output map (sigmoid): $\hat y = \psi(z) = \sigma(z) = \frac{1}{1+e^{-z}}$</li>
+<li>Loss (BCE): $J = -\big[y\log \hat y + (1-y)\log(1-\hat y)\big]$</li>
+</ul>
+
+<h3>Derivatives</h3>
+<div class="step">
+<p>1) Loss wrt prediction:</p>
+$$\begin{aligned}
+\frac{\partial J}{\partial \hat y}
+&= -\left[\frac{y}{\hat y} - \frac{1-y}{1-\hat y}\right] \\
+&= -\frac{y(1-\hat y) - (1-y)\hat y}{\hat y(1-\hat y)} \\
+&= \frac{\hat y - y}{\hat y(1-\hat y)}.
+\end{aligned}$$
+</div>
+
+<div class="step">
+<p>2) Prediction wrt pre-activation (sigmoid derivative):</p>
+$$\frac{\partial \hat y}{\partial z} = \sigma'(z) = \hat y(1-\hat y).$$
+</div>
+
+<div class="step">
+<p>3) Error signal (explicit chain rule—watch the cancellation):</p>
+$$\boxed{
+\frac{\partial J}{\partial z}
+= \frac{\partial J}{\partial \hat y}\cdot \frac{\partial \hat y}{\partial z}
+= \frac{\hat y - y}{\hat y(1-\hat y)} \cdot \hat y(1-\hat y)
+= \hat y - y
+}
+\;\;\equiv\;\delta.$$
+</div>
+
+<div class="step">
+<p>4) Parameter gradients:</p>
+$$\frac{\partial J}{\partial w} = \delta\, x,\qquad
+\frac{\partial J}{\partial b} = \delta.$$
+</div>
+
+<h2>Softmax + Cross-Entropy (multiclass) — full derivation</h2>
+
+<ul>
+<li>Affine: $z = Wx + b \in \mathbb{R}^k$</li>
+<li>Softmax: $\hat y_i = \frac{e^{z_i}}{\sum_j e^{z_j}}$</li>
+<li>CE loss (with one-hot $y\in\mathbb{R}^k$): $J = -\sum_{i=1}^k y_i \log \hat y_i$</li>
+</ul>
+
+<h3>Pieces needed</h3>
+<div class="step">
+<p>1) Loss wrt prediction:</p>
+$$\frac{\partial J}{\partial \hat y_i} = -\frac{y_i}{\hat y_i}.$$
+</div>
+
+<div class="step">
+<p>2) Softmax Jacobian:</p>
+$$\frac{\partial \hat y_i}{\partial z_j} = \hat y_i(\mathbf{1}_{i=j} - \hat y_j).$$
+</div>
+
+<h3>Error signal</h3>
+<p>Chain rule componentwise for $j$-th logit:</p>
+$$\begin{aligned}
+\frac{\partial J}{\partial z_j}
+&= \sum_{i=1}^k \frac{\partial J}{\partial \hat y_i}\,\frac{\partial \hat y_i}{\partial z_j}
+= \sum_{i=1}^k \left(-\frac{y_i}{\hat y_i}\right)\,\hat y_i(\mathbf{1}_{i=j}-\hat y_j) \\
+&= \sum_{i=1}^k \left(-y_i\right)(\mathbf{1}_{i=j}-\hat y_j)
+= -y_j + \hat y_j\sum_{i=1}^k y_i \\
+&= -y_j + \hat y_j
+= \hat y_j - y_j.
+\end{aligned}$$
+
+<p>Thus</p>
+$$\boxed{\;\delta = \frac{\partial J}{\partial z} = \hat y - y\in\mathbb{R}^k\;}$$
+
+<h3>Parameter gradients</h3>
+$$\frac{\partial J}{\partial W} = \delta\, x^\top,\qquad
+\frac{\partial J}{\partial b} = \delta.$$
+
+<h2>Summary (all three cases)</h2>
+<ul>
+<li><strong>Identity + MSE:</strong> $\delta = \hat y - y$</li>
+<li><strong>Sigmoid + BCE:</strong> $\delta = \hat y - y$</li>
+<li><strong>Softmax + CE:</strong> $\delta = \hat y - y$</li>
+</ul>
+
+<div class="highlight">
+<p>Once $\delta$ is known, <strong>the gradients always take the same outer-product form</strong>:</p>
+$$\frac{\partial J}{\partial W} = \delta\,x^\top,\qquad
+\frac{\partial J}{\partial b} = \delta,$$
+<p>with $\delta\in\mathbb{R}$ (scalar output) or $\delta\in\mathbb{R}^k$ (vector output).</p>
+</div>
+
+<h2>Batch view</h2>
+
+<p>For a batch of $B$ samples with inputs $X \in \mathbb{R}^{B \times d}$ and targets $Y \in \mathbb{R}^B$:</p>
+
+<p><strong>Forward pass:</strong></p>
+$$Z = Xw + b\mathbf{1}_B \quad \text{where } Z, Y \in \mathbb{R}^B$$
+$$\hat Y = \psi(Z) \quad \text{(elementwise)}$$
+
+<p><strong>Total loss:</strong></p>
+$$J_{\text{total}} = \frac{1}{B}\sum_{i=1}^B \mathcal{L}(\hat y_i, y_i) \quad \text{(mean over batch)}$$
+
+<p><strong>Batch gradients:</strong></p>
+
+<p>For the error signals $\delta_i = \frac{\partial \mathcal{L}(\hat y_i, y_i)}{\partial z_i}$, let $\boldsymbol{\delta} = [\delta_1, \delta_2, \ldots, \delta_B]^T \in \mathbb{R}^B$.</p>
+
+<p><strong>Weight gradient (sum of outer products):</strong></p>
+$$\frac{\partial J_{\text{total}}}{\partial w} = \frac{1}{B}\sum_{i=1}^B \delta_i x_i = \frac{1}{B}X^T \boldsymbol{\delta}$$
+
+<p><strong>Bias gradient (sum of scalars):</strong></p>
+$$\frac{\partial J_{\text{total}}}{\partial b} = \frac{1}{B}\sum_{i=1}^B \delta_i = \frac{1}{B}\mathbf{1}_B^T \boldsymbol{\delta}$$
+
+<p><strong>Vectorized form:</strong></p>
+$$\boxed{\frac{\partial J_{\text{total}}}{\partial w} = \frac{1}{B}X^T \boldsymbol{\delta} \quad (d), \quad \frac{\partial J_{\text{total}}}{\partial b} = \frac{1}{B}\mathbf{1}_B^T \boldsymbol{\delta} \quad (1)}$$
+
+</body>
+</html>
