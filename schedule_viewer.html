@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PGY-5 Ortho Schedule Viewer</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f3f4f6; color: #1f2937; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+.container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+
+/* Header */
+.app-header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+    color: white; padding: 24px 0; margin-bottom: 20px;
+}
+.app-header h1 { font-size: 24px; font-weight: 700; }
+.app-header p { opacity: 0.85; font-size: 14px; margin-top: 4px; }
+
+/* Summary Stats */
+.stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+}
+.stat-card {
+    background: white; border-radius: 10px; padding: 14px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.stat-card .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; font-weight: 600; }
+.stat-card .stat-value { font-size: 22px; font-weight: 700; color: #1e3a5f; margin-top: 2px; }
+.stat-card .stat-sub { font-size: 12px; color: #9ca3af; }
+
+/* Filter Panel */
+.filter-panel {
+    background: white; border-radius: 12px; padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;
+}
+.filter-panel h2 { font-size: 15px; font-weight: 700; color: #374151; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.filter-section { margin-bottom: 16px; }
+.filter-section:last-child { margin-bottom: 0; }
+.filter-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 8px; }
+
+.filter-row {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;
+}
+.filter-row label { font-size: 13px; color: #374151; font-weight: 500; min-width: 80px; }
+.filter-row span.connector { font-size: 13px; color: #9ca3af; }
+
+/* iOS: font-size >= 16px on inputs prevents Safari auto-zoom */
+select, input[type=range] {
+    padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 16px; background: white; color: #374151;
+    cursor: pointer; -webkit-appearance: none; appearance: none;
+}
+select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+    padding-right: 28px;
+}
+select:focus, input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+input[type=range] { padding: 0; width: 160px; cursor: pointer; border: none; -webkit-appearance: auto; appearance: auto; }
+input[type=range]:focus { box-shadow: none; }
+
+.range-group { display: flex; align-items: center; gap: 8px; }
+.range-value { font-size: 14px; font-weight: 600; color: #1e3a5f; min-width: 36px; }
+
+.assignment-filter-row {
+    display: flex; gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap;
+}
+.btn-remove {
+    background: none; border: none; color: #ef4444; font-size: 22px; cursor: pointer;
+    padding: 6px 10px; border-radius: 4px; line-height: 1;
+    min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center;
+}
+.btn-remove:hover { background: #fef2f2; }
+.btn-add {
+    background: #eff6ff; color: #3b82f6; border: 1px dashed #93c5fd;
+    padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; min-height: 44px;
+}
+.btn-add:hover { background: #dbeafe; }
+
+/* Presets */
+.preset-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-preset {
+    padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer;
+    transition: all 0.15s; min-height: 44px;
+}
+.btn-preset:hover { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
+.btn-preset.active { background: #1e3a5f; color: white; border-color: #1e3a5f; }
+.btn-reset {
+    padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    border: 1px solid #fecaca; background: #fef2f2; color: #ef4444; cursor: pointer;
+    min-height: 44px;
+}
+.btn-reset:hover { background: #fee2e2; }
+
+/* Sort row */
+.sort-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* Results bar */
+.results-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; font-size: 13px; color: #6b7280;
+}
+.results-bar strong { color: #1f2937; }
+
+/* Schedule cards */
+.schedule-card {
+    background: white; border-radius: 12px; margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;
+    border: 1px solid #e5e7eb;
+}
+.card-header {
+    padding: 12px 16px; display: flex; justify-content: space-between;
+    align-items: center; border-bottom: 1px solid #f3f4f6; flex-wrap: wrap; gap: 8px;
+}
+.card-rank { font-size: 16px; font-weight: 800; color: #1e3a5f; }
+.card-meta { display: flex; gap: 16px; font-size: 13px; color: #6b7280; }
+.card-meta span { display: flex; align-items: center; gap: 4px; }
+.card-meta .val { font-weight: 700; color: #374151; }
+
+.card-scores {
+    padding: 8px 16px; display: flex; gap: 6px; flex-wrap: wrap;
+    border-bottom: 1px solid #f3f4f6;
+}
+.score-pill {
+    font-size: 11px; font-weight: 600; padding: 3px 10px;
+    border-radius: 20px; background: #f3f4f6; color: #374151;
+}
+.score-pill.score-high { background: #dcfce7; color: #166534; }
+.score-pill.score-mid { background: #fef9c3; color: #854d0e; }
+.score-pill.score-low { background: #fef2f2; color: #991b1b; }
+.score-pill.score-none { background: #f9fafb; color: #9ca3af; }
+
+/* Desktop schedule table — hidden on mobile */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.schedule-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
+.schedule-table th {
+    background: #f9fafb; padding: 8px 10px; font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280;
+    text-align: center; border-bottom: 2px solid #e5e7eb;
+}
+.schedule-table th:first-child { text-align: left; }
+.schedule-table th:last-child { text-align: center; }
+.schedule-table td {
+    padding: 8px 10px; text-align: center; font-weight: 500; font-size: 12px;
+    border-bottom: 1px solid #f3f4f6; position: relative; white-space: nowrap;
+}
+.schedule-table td:first-child {
+    text-align: left; font-weight: 700; color: #374151; background: #fafbfc;
+    position: sticky; left: 0; z-index: 1;
+}
+.schedule-table td:last-child { font-weight: 700; text-align: center; }
+.schedule-table tr:last-child td { border-bottom: none; }
+
+/* Rotation colors */
+.rot-0 { background: #dbeafe; color: #1e40af; }
+.rot-1 { background: #ede9fe; color: #5b21b6; }
+.rot-2 { background: #fee2e2; color: #991b1b; }
+.rot-3 { background: #ccfbf1; color: #115e59; }
+.rot-4 { background: #ffedd5; color: #9a3412; }
+.rot-5 { background: #dcfce7; color: #166534; }
+.rot-6 { background: #fef9c3; color: #854d0e; }
+
+/* Preference match */
+.pref-match {
+    box-shadow: inset 0 0 0 2px #22c55e;
+    font-weight: 700 !important;
+}
+.pref-match::after {
+    content: '\2713'; position: absolute; top: 1px; right: 3px;
+    font-size: 9px; color: #16a34a; font-weight: 700;
+}
+
+/* Pagination */
+.pagination {
+    display: flex; justify-content: center; align-items: center; gap: 8px;
+    padding: 20px 0; flex-wrap: wrap;
+}
+.btn-page {
+    padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer;
+    min-height: 44px;
+}
+.btn-page:hover { border-color: #3b82f6; color: #3b82f6; }
+.btn-page:disabled { opacity: 0.4; cursor: default; }
+.btn-page:disabled:hover { border-color: #d1d5db; color: #374151; }
+.page-info { font-size: 13px; color: #6b7280; }
+.page-info strong { color: #1f2937; }
+
+/* Empty state */
+.empty-state {
+    text-align: center; padding: 60px 20px; color: #9ca3af;
+}
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 15px; }
+
+/* ── Mobile schedule cards (default hidden, shown on mobile) ── */
+.mobile-schedule { display: none; padding: 0 12px 12px; }
+.mobile-res-card {
+    margin-bottom: 8px; border-radius: 8px; overflow: hidden;
+    border: 1px solid #e5e7eb;
+}
+.mobile-res-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 10px; background: #f9fafb; font-weight: 700; font-size: 13px;
+    color: #374151; border-bottom: 1px solid #e5e7eb;
+}
+.mobile-res-score { font-size: 12px; font-weight: 600; color: #6b7280; }
+.mobile-res-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 0;
+}
+.mobile-res-grid .mob-cell {
+    padding: 6px 2px; text-align: center; font-size: 10px; font-weight: 600;
+    border-right: 1px solid #f3f4f6; position: relative;
+}
+.mobile-res-grid .mob-cell:last-child { border-right: none; }
+.mobile-res-grid .mob-label {
+    font-size: 8px; text-transform: uppercase; color: #9ca3af; font-weight: 600;
+    display: block; margin-bottom: 2px;
+}
+.mobile-res-grid .mob-cell.pref-match {
+    box-shadow: inset 0 0 0 2px #22c55e;
+}
+.mobile-res-grid .mob-cell.pref-match::after {
+    content: '\2713'; position: absolute; top: 1px; right: 2px;
+    font-size: 7px; color: #16a34a; font-weight: 700;
+}
+
+/* ── Responsive: mobile (width <= 768px) ── */
+@media (max-width: 768px) {
+    .container { padding: 8px; }
+    .app-header { padding: 16px 0; }
+    .app-header h1 { font-size: 20px; }
+    .app-header p { font-size: 12px; }
+
+    .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .stat-card { padding: 10px 12px; }
+    .stat-card .stat-value { font-size: 18px; }
+    .stat-card .stat-label { font-size: 10px; }
+
+    .filter-panel { padding: 12px; }
+    .filter-panel h2 { font-size: 14px; margin-bottom: 10px; }
+    .filter-section { margin-bottom: 12px; }
+
+    .preset-row { gap: 6px; }
+    .btn-preset, .btn-reset { padding: 8px 12px; font-size: 12px; flex: 1 1 auto; text-align: center; }
+
+    .filter-row { flex-direction: column; align-items: stretch; gap: 6px; }
+    .filter-row label { min-width: unset; font-size: 13px; }
+
+    .assignment-filter-row { gap: 4px; }
+    .assignment-filter-row select { flex: 1; min-width: 0; }
+    .assignment-filter-row .connector { display: none; }
+
+    .range-group { width: 100%; }
+    input[type=range] { flex: 1; width: 100%; }
+
+    .sort-row { flex-direction: column; align-items: stretch; gap: 6px; }
+    .sort-row select { width: 100%; }
+
+    .card-header { flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 12px; }
+    .card-meta { flex-wrap: wrap; gap: 8px; font-size: 12px; }
+    .card-scores { padding: 6px 12px; gap: 4px; }
+    .score-pill { font-size: 10px; padding: 3px 8px; }
+
+    /* Show mobile layout, hide desktop table */
+    .table-wrap { display: none !important; }
+    .mobile-schedule { display: block !important; }
+
+    .results-bar { font-size: 12px; }
+
+    .pagination { gap: 4px; }
+    .btn-page { padding: 10px 14px; font-size: 13px; }
+    .page-info { font-size: 12px; width: 100%; text-align: center; }
+
+    .schedule-card { border-radius: 8px; margin-bottom: 10px; }
+}
+
+@media (max-width: 400px) {
+    .stats-row { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .stat-card .stat-value { font-size: 16px; }
+    .mobile-res-grid .mob-cell { padding: 5px 1px; font-size: 9px; }
+    .mobile-res-grid .mob-label { font-size: 7px; }
+    .mobile-res-header { font-size: 12px; padding: 6px 8px; }
+    .preset-row { gap: 4px; }
+    .btn-preset, .btn-reset { padding: 8px 8px; font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+    <div class="container">
+        <h1>PGY-5 Ortho Rotation Schedules</h1>
+        <p id="header-sub">Loading...</p>
+    </div>
+</header>
+
+<div class="container">
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Matching</div>
+            <div class="stat-value" id="stat-count">—</div>
+            <div class="stat-sub" id="stat-count-sub"></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Score Range</div>
+            <div class="stat-value" id="stat-score">—</div>
+            <div class="stat-sub">out of 28 prefs</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Avg Score</div>
+            <div class="stat-value" id="stat-avg">—</div>
+            <div class="stat-sub">preferences met</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Best Fairness</div>
+            <div class="stat-value" id="stat-fair">—</div>
+            <div class="stat-sub">min satisfaction rate</div>
+        </div>
+    </div>
+
+    <div class="filter-panel">
+        <h2>Filters & Sorting</h2>
+
+        <div class="filter-section">
+            <div class="filter-section-title">Quick Presets</div>
+            <div class="preset-row">
+                <button class="btn-preset" onclick="applyPreset('best')">Best Overall</button>
+                <button class="btn-preset" onclick="applyPreset('fair')">Most Fair</button>
+                <button class="btn-preset" onclick="applyPreset('constant')">Best for Constant</button>
+                <button class="btn-preset" onclick="applyPreset('kwon')">Best for Kwon</button>
+                <button class="btn-preset" onclick="applyPreset('law')">Best for Law</button>
+                <button class="btn-preset" onclick="applyPreset('pius')">Best for Pius</button>
+                <button class="btn-preset" onclick="applyPreset('schroeder')">Best for Schroeder</button>
+                <button class="btn-preset" onclick="applyPreset('skaggs')">Best for Skaggs</button>
+                <button class="btn-reset" onclick="resetAll()">Reset All</button>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-section-title">Assignment Filters</div>
+            <div id="assignment-filters"></div>
+            <button class="btn-add" onclick="addAssignmentFilter()">+ Add Filter</button>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-section-title">Score & Fairness</div>
+            <div class="filter-row">
+                <label>Min Total Prefs:</label>
+                <div class="range-group">
+                    <input type="range" id="f-min-total" min="0" max="28" value="0" oninput="onFilterChange()">
+                    <span class="range-value" id="f-min-total-val">0</span>
+                </div>
+            </div>
+            <div class="filter-row">
+                <label>Min Fairness:</label>
+                <div class="range-group">
+                    <input type="range" id="f-min-fair" min="0" max="100" value="0" oninput="onFilterChange()">
+                    <span class="range-value" id="f-min-fair-val">0%</span>
+                </div>
+            </div>
+            <div class="filter-row">
+                <label>Min Score for:</label>
+                <select id="f-res-select" onchange="onFilterChange()">
+                    <option value="">— Any —</option>
+                </select>
+                <div class="range-group">
+                    <input type="range" id="f-res-min" min="0" max="5" value="0" oninput="onFilterChange()">
+                    <span class="range-value" id="f-res-min-val">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-section-title">Sort</div>
+            <div class="sort-row">
+                <select id="sort-field" onchange="onSortChange()">
+                    <option value="tp">Total Score</option>
+                    <option value="mr">Fairness (Min Rate)</option>
+                    <option value="sp">Spread (lower = fairer)</option>
+                </select>
+                <select id="sort-order" onchange="onSortChange()">
+                    <option value="desc">Descending</option>
+                    <option value="asc">Ascending</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="results-bar" id="results-bar">—</div>
+
+    <div id="schedule-grid"></div>
+
+    <nav class="pagination" id="pagination"></nav>
+</div>
+
+    <script>
+const DATA = {"residents":["Constant","Kwon","Law","Pius","Sanchez","Schroeder","Skaggs"],"rotations":["Sports","International","Trauma","PAVAH","Urgent","Elective","Kaiser SSF"],"prefResidents":["Constant","Kwon","Law","Pius","Schroeder","Skaggs"],"softPrefs":{"Schroeder":{"1":["Kaiser SSF"],"2":["Trauma"],"3":["Urgent"],"5":["Sports"],"6":["Elective"]},"Skaggs":{"1":["PAVAH"],"2":["Urgent","Elective"],"4":["Trauma"],"6":["Sports"],"7":["Urgent","Elective"]},"Pius":{"1":["Urgent","Elective"],"3":["Urgent","Elective"],"4":["Kaiser SSF"],"5":["Trauma"],"6":["PAVAH"]},"Law":{"1":["Sports"],"2":["Trauma"],"3":["Urgent","Elective"],"4":["PAVAH"],"5":["Urgent","Elective"]},"Constant":{"1":["Sports","PAVAH"],"2":["Urgent","Elective"],"3":["Trauma"],"5":["Urgent","Elective"],"6":["Kaiser SSF"]},"Kwon":{"2":["Urgent","Elective"],"5":["International"],"7":["Urgent","Elective"]}},"prefTotals":{"Constant":5,"Kwon":3,"Law":5,"Pius":5,"Schroeder":5,"Skaggs":5},"schedules":[{"id":1,"tp":16,"mr":40,"sp":60,"g":[[4,2,3,0,5,6,1],[6,4,2,3,1,0,5],[0,3,5,2,4,1,6],[5,1,6,4,2,3,0],[1,6,0,5,3,4,2],[2,0,4,1,6,5,3],[3,5,1,6,0,2,4]],"rs":[2,3,3,3,2,3],"rr":[40,100,60,60,40,60]},{"id":2,"tp":16,"mr":40,"sp":60,"g":[[4,2,3,0,5,6,1],[6,5,2,3,1,0,4],[0,3,5,2,4,1,6],[5,1,6,4,2,3,0],[1,6,0,5,3,4,2],[2,0,4,1,6,5,3],[3,4,1,6,0,2,5]],"rs":[2,3,3,3,2,3],"rr":[40,100,60,60,40,60]},{"id":3,"tp":15,"mr":40,"sp":60,"g":[[4,2,3,0,5,6,1],[3,4,2,6,1,0,5],[0,3,5,2,4,1,6],[5,1,6,4,2,3,0],[1,6,0,5,3,4,2],[2,0,4,1,6,5,3],[6,5,1,3,0,2,4]],"rs":[2,3,3,3,2,2],"rr":[40,100,60,60,40,40]},{"id":4,"tp":15,"mr":40,"sp":60,"g":[[4,2,3,0,5,6,1],[3,5,2,6,1,0,4],[0,3,5,2,4,1,6],[5,1,6,4,2,3,0],[1,6,0,5,3,4,2],[2,0,4,1,6,5,3],[6,4,1,3,0,2,5]],"rs":[2,3,3,3,2,2],"rr":[40,100,60,60,40,40]},{"id":5,"tp":15,"mr":20,"sp":80,"g":[[2,3,4,0,5,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[5,1,6,4,3,2,0],[1,0,3,5,6,4,2],[4,6,0,1,2,5,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":6,"tp":15,"mr":20,"sp":80,"g":[[2,3,5,0,4,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[5,1,6,4,3,2,0],[1,0,3,5,6,4,2],[4,6,0,1,2,5,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":7,"tp":15,"mr":20,"sp":80,"g":[[2,3,4,0,5,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[5,1,3,4,6,2,0],[1,0,6,5,3,4,2],[4,6,0,1,2,5,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":8,"tp":15,"mr":20,"sp":80,"g":[[2,3,5,0,4,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[5,1,3,4,6,2,0],[1,0,6,5,3,4,2],[4,6,0,1,2,5,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":9,"tp":15,"mr":20,"sp":80,"g":[[2,3,4,0,5,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[5,1,3,4,6,2,0],[1,6,0,5,3,4,2],[4,0,6,1,2,5,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":10,"tp":15,"mr":20,"sp":80,"g":[[2,3,5,0,4,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[5,1,3,4,6,2,0],[1,6,0,5,3,4,2],[4,0,6,1,2,5,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":11,"tp":15,"mr":20,"sp":80,"g":[[2,3,4,0,5,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[5,1,6,4,3,2,0],[1,0,3,5,6,4,2],[4,6,0,1,2,5,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":12,"tp":15,"mr":20,"sp":80,"g":[[2,3,5,0,4,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[5,1,6,4,3,2,0],[1,0,3,5,6,4,2],[4,6,0,1,2,5,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":13,"tp":15,"mr":20,"sp":80,"g":[[2,3,4,0,5,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[5,1,3,4,6,2,0],[1,0,6,5,3,4,2],[4,6,0,1,2,5,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":14,"tp":15,"mr":20,"sp":80,"g":[[2,3,5,0,4,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[5,1,3,4,6,2,0],[1,0,6,5,3,4,2],[4,6,0,1,2,5,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":15,"tp":15,"mr":20,"sp":80,"g":[[2,3,4,0,5,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[5,1,3,4,6,2,0],[1,6,0,5,3,4,2],[4,0,6,1,2,5,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":16,"tp":15,"mr":20,"sp":80,"g":[[2,3,5,0,4,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[5,1,3,4,6,2,0],[1,6,0,5,3,4,2],[4,0,6,1,2,5,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,1,3],"rr":[40,100,100,20,20,60]},{"id":17,"tp":14,"mr":20,"sp":80,"g":[[4,2,0,3,5,6,1],[3,4,2,6,1,0,5],[0,3,5,2,4,1,6],[5,1,6,4,3,2,0],[1,6,3,5,0,4,2],[6,0,4,1,2,5,3],[2,5,1,0,6,3,4]],"rs":[2,3,3,1,3,2],"rr":[40,100,60,20,60,40]},{"id":18,"tp":14,"mr":20,"sp":80,"g":[[4,2,0,3,5,6,1],[3,5,2,6,1,0,4],[0,3,5,2,4,1,6],[5,1,6,4,3,2,0],[1,6,3,5,0,4,2],[6,0,4,1,2,5,3],[2,4,1,0,6,3,5]],"rs":[2,3,3,1,3,2],"rr":[40,100,60,20,60,40]},{"id":19,"tp":14,"mr":0,"sp":100,"g":[[2,3,4,0,5,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[4,1,6,5,3,2,0],[1,0,3,4,6,5,2],[5,6,0,1,2,4,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":20,"tp":14,"mr":0,"sp":100,"g":[[2,3,5,0,4,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[4,1,6,5,3,2,0],[1,0,3,4,6,5,2],[5,6,0,1,2,4,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":21,"tp":14,"mr":0,"sp":100,"g":[[2,3,4,0,5,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[4,1,3,5,6,2,0],[1,0,6,4,3,5,2],[5,6,0,1,2,4,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":22,"tp":14,"mr":0,"sp":100,"g":[[2,3,5,0,4,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[4,1,3,5,6,2,0],[1,0,6,4,3,5,2],[5,6,0,1,2,4,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":23,"tp":14,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[6,4,2,3,1,0,5],[0,3,4,2,5,1,6],[4,1,6,5,2,3,0],[1,6,0,4,3,5,2],[2,0,5,1,6,4,3],[3,5,1,6,0,2,4]],"rs":[2,3,3,3,0,3],"rr":[40,100,60,60,0,60]},{"id":24,"tp":14,"mr":0,"sp":100,"g":[[2,3,4,0,5,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[4,1,3,5,6,2,0],[1,6,0,4,3,5,2],[5,0,6,1,2,4,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":25,"tp":14,"mr":0,"sp":100,"g":[[2,3,5,0,4,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[4,1,3,5,6,2,0],[1,6,0,4,3,5,2],[5,0,6,1,2,4,3],[6,5,1,2,0,3,4]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":26,"tp":14,"mr":0,"sp":100,"g":[[2,3,4,0,5,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[4,1,6,5,3,2,0],[1,0,3,4,6,5,2],[5,6,0,1,2,4,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":27,"tp":14,"mr":0,"sp":100,"g":[[2,3,5,0,4,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[4,1,6,5,3,2,0],[1,0,3,4,6,5,2],[5,6,0,1,2,4,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":28,"tp":14,"mr":0,"sp":100,"g":[[2,3,4,0,5,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[4,1,3,5,6,2,0],[1,0,6,4,3,5,2],[5,6,0,1,2,4,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":29,"tp":14,"mr":0,"sp":100,"g":[[2,3,5,0,4,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[4,1,3,5,6,2,0],[1,0,6,4,3,5,2],[5,6,0,1,2,4,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":30,"tp":14,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[6,5,2,3,1,0,4],[0,3,4,2,5,1,6],[4,1,6,5,2,3,0],[1,6,0,4,3,5,2],[2,0,5,1,6,4,3],[3,4,1,6,0,2,5]],"rs":[2,3,3,3,0,3],"rr":[40,100,60,60,0,60]},{"id":31,"tp":14,"mr":0,"sp":100,"g":[[2,3,4,0,5,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[4,1,3,5,6,2,0],[1,6,0,4,3,5,2],[5,0,6,1,2,4,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":32,"tp":14,"mr":0,"sp":100,"g":[[2,3,5,0,4,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[4,1,3,5,6,2,0],[1,6,0,4,3,5,2],[5,0,6,1,2,4,3],[6,4,1,2,0,3,5]],"rs":[2,3,5,1,0,3],"rr":[40,100,100,20,0,60]},{"id":33,"tp":13,"mr":20,"sp":80,"g":[[3,2,4,0,5,6,1],[6,4,2,3,1,0,5],[0,3,5,2,4,1,6],[5,1,6,4,3,2,0],[1,0,3,5,6,4,2],[4,6,0,1,2,5,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":34,"tp":13,"mr":20,"sp":80,"g":[[3,2,5,0,4,6,1],[6,4,2,3,1,0,5],[0,3,4,2,5,1,6],[5,1,6,4,3,2,0],[1,0,3,5,6,4,2],[4,6,0,1,2,5,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":35,"tp":13,"mr":20,"sp":80,"g":[[3,2,4,0,5,6,1],[6,4,2,3,1,0,5],[0,3,5,2,4,1,6],[5,1,3,4,6,2,0],[1,0,6,5,3,4,2],[4,6,0,1,2,5,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":36,"tp":13,"mr":20,"sp":80,"g":[[3,2,5,0,4,6,1],[6,4,2,3,1,0,5],[0,3,4,2,5,1,6],[5,1,3,4,6,2,0],[1,0,6,5,3,4,2],[4,6,0,1,2,5,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":37,"tp":13,"mr":20,"sp":80,"g":[[3,2,4,0,5,6,1],[6,4,2,3,1,0,5],[0,3,5,2,4,1,6],[5,1,3,4,6,2,0],[1,6,0,5,3,4,2],[4,0,6,1,2,5,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":38,"tp":13,"mr":20,"sp":80,"g":[[3,2,5,0,4,6,1],[6,4,2,3,1,0,5],[0,3,4,2,5,1,6],[5,1,3,4,6,2,0],[1,6,0,5,3,4,2],[4,0,6,1,2,5,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":39,"tp":13,"mr":20,"sp":80,"g":[[3,2,4,0,5,6,1],[6,5,2,3,1,0,4],[0,3,5,2,4,1,6],[5,1,6,4,3,2,0],[1,0,3,5,6,4,2],[4,6,0,1,2,5,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":40,"tp":13,"mr":20,"sp":80,"g":[[3,2,5,0,4,6,1],[6,5,2,3,1,0,4],[0,3,4,2,5,1,6],[5,1,6,4,3,2,0],[1,0,3,5,6,4,2],[4,6,0,1,2,5,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":41,"tp":13,"mr":20,"sp":80,"g":[[3,2,4,0,5,6,1],[6,5,2,3,1,0,4],[0,3,5,2,4,1,6],[5,1,3,4,6,2,0],[1,0,6,5,3,4,2],[4,6,0,1,2,5,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":42,"tp":13,"mr":20,"sp":80,"g":[[3,2,5,0,4,6,1],[6,5,2,3,1,0,4],[0,3,4,2,5,1,6],[5,1,3,4,6,2,0],[1,0,6,5,3,4,2],[4,6,0,1,2,5,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":43,"tp":13,"mr":20,"sp":80,"g":[[3,2,4,0,5,6,1],[6,5,2,3,1,0,4],[0,3,5,2,4,1,6],[5,1,3,4,6,2,0],[1,6,0,5,3,4,2],[4,0,6,1,2,5,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":44,"tp":13,"mr":20,"sp":80,"g":[[3,2,5,0,4,6,1],[6,5,2,3,1,0,4],[0,3,4,2,5,1,6],[5,1,3,4,6,2,0],[1,6,0,5,3,4,2],[4,0,6,1,2,5,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,1,2],"rr":[60,100,60,20,20,40]},{"id":45,"tp":13,"mr":20,"sp":80,"g":[[4,2,0,3,5,6,1],[3,4,2,6,1,0,5],[0,3,5,2,4,1,6],[6,1,3,4,2,5,0],[1,0,6,5,3,4,2],[5,6,4,1,0,2,3],[2,5,1,0,6,3,4]],"rs":[2,3,3,1,2,2],"rr":[40,100,60,20,40,40]},{"id":46,"tp":13,"mr":20,"sp":80,"g":[[4,2,0,3,5,6,1],[3,4,2,6,1,0,5],[0,3,5,2,4,1,6],[6,1,3,5,2,4,0],[1,0,6,4,3,5,2],[5,6,4,1,0,2,3],[2,5,1,0,6,3,4]],"rs":[2,3,3,1,2,2],"rr":[40,100,60,20,40,40]},{"id":47,"tp":13,"mr":20,"sp":80,"g":[[4,2,0,3,5,6,1],[3,5,2,6,1,0,4],[0,3,5,2,4,1,6],[6,1,3,4,2,5,0],[1,0,6,5,3,4,2],[5,6,4,1,0,2,3],[2,4,1,0,6,3,5]],"rs":[2,3,3,1,2,2],"rr":[40,100,60,20,40,40]},{"id":48,"tp":13,"mr":20,"sp":80,"g":[[4,2,0,3,5,6,1],[3,5,2,6,1,0,4],[0,3,5,2,4,1,6],[6,1,3,5,2,4,0],[1,0,6,4,3,5,2],[5,6,4,1,0,2,3],[2,4,1,0,6,3,5]],"rs":[2,3,3,1,2,2],"rr":[40,100,60,20,40,40]},{"id":49,"tp":13,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[3,4,2,6,1,0,5],[0,3,4,2,5,1,6],[4,1,6,5,2,3,0],[1,6,0,4,3,5,2],[2,0,5,1,6,4,3],[6,5,1,3,0,2,4]],"rs":[2,3,3,3,0,2],"rr":[40,100,60,60,0,40]},{"id":50,"tp":13,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[3,5,2,6,1,0,4],[0,3,4,2,5,1,6],[4,1,6,5,2,3,0],[1,6,0,4,3,5,2],[2,0,5,1,6,4,3],[6,4,1,3,0,2,5]],"rs":[2,3,3,3,0,2],"rr":[40,100,60,60,0,40]},{"id":51,"tp":12,"mr":20,"sp":80,"g":[[4,2,3,0,5,6,1],[6,4,2,3,1,0,5],[0,3,5,2,4,1,6],[3,1,6,4,2,5,0],[1,6,0,5,3,4,2],[5,0,4,1,6,2,3],[2,5,1,6,0,3,4]],"rs":[2,3,3,1,1,2],"rr":[40,100,60,20,20,40]},{"id":52,"tp":12,"mr":20,"sp":80,"g":[[4,2,3,0,5,6,1],[6,4,2,3,1,0,5],[0,3,5,2,4,1,6],[3,1,6,5,2,4,0],[1,6,0,4,3,5,2],[5,0,4,1,6,2,3],[2,5,1,6,0,3,4]],"rs":[2,3,3,1,1,2],"rr":[40,100,60,20,20,40]},{"id":53,"tp":12,"mr":20,"sp":80,"g":[[4,2,3,0,5,6,1],[6,4,2,3,1,0,5],[3,0,5,2,4,1,6],[5,1,6,4,3,2,0],[1,3,0,5,6,4,2],[0,6,4,1,2,5,3],[2,5,1,6,0,3,4]],"rs":[2,3,2,1,2,2],"rr":[40,100,40,20,40,40]},{"id":54,"tp":12,"mr":20,"sp":80,"g":[[4,2,3,0,5,6,1],[6,5,2,3,1,0,4],[0,3,5,2,4,1,6],[3,1,6,4,2,5,0],[1,6,0,5,3,4,2],[5,0,4,1,6,2,3],[2,4,1,6,0,3,5]],"rs":[2,3,3,1,1,2],"rr":[40,100,60,20,20,40]},{"id":55,"tp":12,"mr":20,"sp":80,"g":[[4,2,3,0,5,6,1],[6,5,2,3,1,0,4],[0,3,5,2,4,1,6],[3,1,6,5,2,4,0],[1,6,0,4,3,5,2],[5,0,4,1,6,2,3],[2,4,1,6,0,3,5]],"rs":[2,3,3,1,1,2],"rr":[40,100,60,20,20,40]},{"id":56,"tp":12,"mr":20,"sp":80,"g":[[4,2,3,0,5,6,1],[6,5,2,3,1,0,4],[3,0,5,2,4,1,6],[5,1,6,4,3,2,0],[1,3,0,5,6,4,2],[0,6,4,1,2,5,3],[2,4,1,6,0,3,5]],"rs":[2,3,2,1,2,2],"rr":[40,100,40,20,40,40]},{"id":57,"tp":12,"mr":20,"sp":80,"g":[[5,2,0,3,4,6,1],[3,4,2,6,1,0,5],[0,3,4,2,5,1,6],[6,1,3,4,2,5,0],[1,0,6,5,3,4,2],[4,6,5,1,0,2,3],[2,5,1,0,6,3,4]],"rs":[2,3,3,1,1,2],"rr":[40,100,60,20,20,40]},{"id":58,"tp":12,"mr":20,"sp":80,"g":[[5,2,0,3,4,6,1],[3,4,2,6,1,0,5],[0,3,4,2,5,1,6],[6,1,3,5,2,4,0],[1,0,6,4,3,5,2],[4,6,5,1,0,2,3],[2,5,1,0,6,3,4]],"rs":[2,3,3,1,1,2],"rr":[40,100,60,20,20,40]},{"id":59,"tp":12,"mr":20,"sp":80,"g":[[5,2,0,3,4,6,1],[3,4,2,6,1,0,5],[0,3,4,2,5,1,6],[4,1,6,5,3,2,0],[1,6,3,4,0,5,2],[6,0,5,1,2,4,3],[2,5,1,0,6,3,4]],"rs":[2,3,3,1,1,2],"rr":[40,100,60,20,20,40]},{"id":60,"tp":12,"mr":20,"sp":80,"g":[[5,2,0,3,4,6,1],[3,5,2,6,1,0,4],[0,3,4,2,5,1,6],[6,1,3,4,2,5,0],[1,0,6,5,3,4,2],[4,6,5,1,0,2,3],[2,4,1,0,6,3,5]],"rs":[2,3,3,1,1,2],"rr":[40,100,60,20,20,40]},{"id":61,"tp":12,"mr":20,"sp":80,"g":[[5,2,0,3,4,6,1],[3,5,2,6,1,0,4],[0,3,4,2,5,1,6],[6,1,3,5,2,4,0],[1,0,6,4,3,5,2],[4,6,5,1,0,2,3],[2,4,1,0,6,3,5]],"rs":[2,3,3,1,1,2],"rr":[40,100,60,20,20,40]},{"id":62,"tp":12,"mr":20,"sp":80,"g":[[5,2,0,3,4,6,1],[3,5,2,6,1,0,4],[0,3,4,2,5,1,6],[4,1,6,5,3,2,0],[1,6,3,4,0,5,2],[6,0,5,1,2,4,3],[2,4,1,0,6,3,5]],"rs":[2,3,3,1,1,2],"rr":[40,100,60,20,20,40]},{"id":63,"tp":12,"mr":0,"sp":100,"g":[[3,2,4,0,5,6,1],[6,4,2,3,1,0,5],[0,3,5,2,4,1,6],[4,1,6,5,3,2,0],[1,0,3,4,6,5,2],[5,6,0,1,2,4,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":64,"tp":12,"mr":0,"sp":100,"g":[[3,2,5,0,4,6,1],[6,4,2,3,1,0,5],[0,3,4,2,5,1,6],[4,1,6,5,3,2,0],[1,0,3,4,6,5,2],[5,6,0,1,2,4,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":65,"tp":12,"mr":0,"sp":100,"g":[[3,2,4,0,5,6,1],[6,4,2,3,1,0,5],[0,3,5,2,4,1,6],[4,1,3,5,6,2,0],[1,0,6,4,3,5,2],[5,6,0,1,2,4,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":66,"tp":12,"mr":0,"sp":100,"g":[[3,2,5,0,4,6,1],[6,4,2,3,1,0,5],[0,3,4,2,5,1,6],[4,1,3,5,6,2,0],[1,0,6,4,3,5,2],[5,6,0,1,2,4,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":67,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[2,1,6,4,3,5,0],[1,0,3,5,6,4,2],[4,6,0,1,5,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":68,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[2,1,6,5,3,4,0],[1,0,3,4,6,5,2],[4,6,0,1,5,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":69,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[2,1,6,4,3,5,0],[1,0,3,5,6,4,2],[5,6,0,1,4,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":70,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[2,1,6,5,3,4,0],[1,0,3,4,6,5,2],[5,6,0,1,4,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":71,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[2,1,3,4,6,5,0],[1,0,6,5,3,4,2],[4,6,0,1,5,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":72,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[2,1,3,5,6,4,0],[1,0,6,4,3,5,2],[4,6,0,1,5,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":73,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[2,1,3,4,6,5,0],[1,0,6,5,3,4,2],[5,6,0,1,4,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":74,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[2,1,3,5,6,4,0],[1,0,6,4,3,5,2],[5,6,0,1,4,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":75,"tp":12,"mr":0,"sp":100,"g":[[3,2,4,0,5,6,1],[6,4,2,3,1,0,5],[0,3,5,2,4,1,6],[4,1,3,5,6,2,0],[1,6,0,4,3,5,2],[5,0,6,1,2,4,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":76,"tp":12,"mr":0,"sp":100,"g":[[3,2,5,0,4,6,1],[6,4,2,3,1,0,5],[0,3,4,2,5,1,6],[4,1,3,5,6,2,0],[1,6,0,4,3,5,2],[5,0,6,1,2,4,3],[2,5,1,6,0,3,4]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":77,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[4,0,6,1,5,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":78,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,4,2,6,1,0,5],[0,2,5,3,4,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[4,0,6,1,5,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":79,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[5,0,6,1,4,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":80,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,4,2,6,1,0,5],[0,2,4,3,5,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[5,0,6,1,4,2,3],[6,5,1,2,0,3,4]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":81,"tp":12,"mr":0,"sp":100,"g":[[3,2,4,0,5,6,1],[6,5,2,3,1,0,4],[0,3,5,2,4,1,6],[4,1,6,5,3,2,0],[1,0,3,4,6,5,2],[5,6,0,1,2,4,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":82,"tp":12,"mr":0,"sp":100,"g":[[3,2,5,0,4,6,1],[6,5,2,3,1,0,4],[0,3,4,2,5,1,6],[4,1,6,5,3,2,0],[1,0,3,4,6,5,2],[5,6,0,1,2,4,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":83,"tp":12,"mr":0,"sp":100,"g":[[3,2,4,0,5,6,1],[6,5,2,3,1,0,4],[0,3,5,2,4,1,6],[4,1,3,5,6,2,0],[1,0,6,4,3,5,2],[5,6,0,1,2,4,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":84,"tp":12,"mr":0,"sp":100,"g":[[3,2,5,0,4,6,1],[6,5,2,3,1,0,4],[0,3,4,2,5,1,6],[4,1,3,5,6,2,0],[1,0,6,4,3,5,2],[5,6,0,1,2,4,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":85,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[2,1,6,4,3,5,0],[1,0,3,5,6,4,2],[4,6,0,1,5,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":86,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[2,1,6,5,3,4,0],[1,0,3,4,6,5,2],[4,6,0,1,5,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":87,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[2,1,6,4,3,5,0],[1,0,3,5,6,4,2],[5,6,0,1,4,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":88,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[2,1,6,5,3,4,0],[1,0,3,4,6,5,2],[5,6,0,1,4,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":89,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[2,1,3,4,6,5,0],[1,0,6,5,3,4,2],[4,6,0,1,5,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":90,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[2,1,3,5,6,4,0],[1,0,6,4,3,5,2],[4,6,0,1,5,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":91,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[2,1,3,4,6,5,0],[1,0,6,5,3,4,2],[5,6,0,1,4,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":92,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[2,1,3,5,6,4,0],[1,0,6,4,3,5,2],[5,6,0,1,4,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":93,"tp":12,"mr":0,"sp":100,"g":[[3,2,4,0,5,6,1],[6,5,2,3,1,0,4],[0,3,5,2,4,1,6],[4,1,3,5,6,2,0],[1,6,0,4,3,5,2],[5,0,6,1,2,4,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":94,"tp":12,"mr":0,"sp":100,"g":[[3,2,5,0,4,6,1],[6,5,2,3,1,0,4],[0,3,4,2,5,1,6],[4,1,3,5,6,2,0],[1,6,0,4,3,5,2],[5,0,6,1,2,4,3],[2,4,1,6,0,3,5]],"rs":[3,3,3,1,0,2],"rr":[60,100,60,20,0,40]},{"id":95,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[4,0,6,1,5,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":96,"tp":12,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[3,5,2,6,1,0,4],[0,2,5,3,4,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[4,0,6,1,5,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":97,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[5,0,6,1,4,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":98,"tp":12,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[3,5,2,6,1,0,4],[0,2,4,3,5,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[5,0,6,1,4,2,3],[6,4,1,2,0,3,5]],"rs":[1,3,5,0,0,3],"rr":[20,100,100,0,0,60]},{"id":99,"tp":12,"mr":0,"sp":100,"g":[[4,2,0,3,5,6,1],[6,4,2,0,1,3,5],[0,3,5,2,4,1,6],[2,1,3,4,6,5,0],[1,0,6,5,3,4,2],[5,6,4,1,2,0,3],[3,5,1,6,0,2,4]],"rs":[2,3,3,0,1,3],"rr":[40,100,60,0,20,60]},{"id":100,"tp":12,"mr":0,"sp":100,"g":[[4,2,0,3,5,6,1],[6,4,2,0,1,3,5],[0,3,5,2,4,1,6],[2,1,3,5,6,4,0],[1,0,6,4,3,5,2],[5,6,4,1,2,0,3],[3,5,1,6,0,2,4]],"rs":[2,3,3,0,1,3],"rr":[40,100,60,0,20,60]},{"id":101,"tp":12,"mr":0,"sp":100,"g":[[4,2,0,3,5,6,1],[6,4,2,0,1,3,5],[0,3,5,2,4,1,6],[2,1,6,4,3,5,0],[1,0,3,5,6,4,2],[5,6,4,1,2,0,3],[3,5,1,6,0,2,4]],"rs":[2,3,3,0,1,3],"rr":[40,100,60,0,20,60]},{"id":102,"tp":12,"mr":0,"sp":100,"g":[[4,2,0,3,5,6,1],[6,4,2,0,1,3,5],[0,3,5,2,4,1,6],[2,1,6,5,3,4,0],[1,0,3,4,6,5,2],[5,6,4,1,2,0,3],[3,5,1,6,0,2,4]],"rs":[2,3,3,0,1,3],"rr":[40,100,60,0,20,60]},{"id":103,"tp":12,"mr":0,"sp":100,"g":[[4,2,0,3,5,6,1],[6,5,2,0,1,3,4],[0,3,5,2,4,1,6],[2,1,3,4,6,5,0],[1,0,6,5,3,4,2],[5,6,4,1,2,0,3],[3,4,1,6,0,2,5]],"rs":[2,3,3,0,1,3],"rr":[40,100,60,0,20,60]},{"id":104,"tp":12,"mr":0,"sp":100,"g":[[4,2,0,3,5,6,1],[6,5,2,0,1,3,4],[0,3,5,2,4,1,6],[2,1,3,5,6,4,0],[1,0,6,4,3,5,2],[5,6,4,1,2,0,3],[3,4,1,6,0,2,5]],"rs":[2,3,3,0,1,3],"rr":[40,100,60,0,20,60]},{"id":105,"tp":12,"mr":0,"sp":100,"g":[[4,2,0,3,5,6,1],[6,5,2,0,1,3,4],[0,3,5,2,4,1,6],[2,1,6,4,3,5,0],[1,0,3,5,6,4,2],[5,6,4,1,2,0,3],[3,4,1,6,0,2,5]],"rs":[2,3,3,0,1,3],"rr":[40,100,60,0,20,60]},{"id":106,"tp":12,"mr":0,"sp":100,"g":[[4,2,0,3,5,6,1],[6,5,2,0,1,3,4],[0,3,5,2,4,1,6],[2,1,6,5,3,4,0],[1,0,3,4,6,5,2],[5,6,4,1,2,0,3],[3,4,1,6,0,2,5]],"rs":[2,3,3,0,1,3],"rr":[40,100,60,0,20,60]},{"id":107,"tp":11,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[6,4,2,3,1,0,5],[0,3,4,2,5,1,6],[3,1,6,4,2,5,0],[1,6,0,5,3,4,2],[4,0,5,1,6,2,3],[2,5,1,6,0,3,4]],"rs":[2,3,3,1,0,2],"rr":[40,100,60,20,0,40]},{"id":108,"tp":11,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[6,4,2,3,1,0,5],[0,3,4,2,5,1,6],[3,1,6,5,2,4,0],[1,6,0,4,3,5,2],[4,0,5,1,6,2,3],[2,5,1,6,0,3,4]],"rs":[2,3,3,1,0,2],"rr":[40,100,60,20,0,40]},{"id":109,"tp":11,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[6,5,2,3,1,0,4],[0,3,4,2,5,1,6],[3,1,6,4,2,5,0],[1,6,0,5,3,4,2],[4,0,5,1,6,2,3],[2,4,1,6,0,3,5]],"rs":[2,3,3,1,0,2],"rr":[40,100,60,20,0,40]},{"id":110,"tp":11,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[6,5,2,3,1,0,4],[0,3,4,2,5,1,6],[3,1,6,5,2,4,0],[1,6,0,4,3,5,2],[4,0,5,1,6,2,3],[2,4,1,6,0,3,5]],"rs":[2,3,3,1,0,2],"rr":[40,100,60,20,0,40]},{"id":111,"tp":11,"mr":0,"sp":100,"g":[[5,2,0,3,4,6,1],[6,4,2,0,1,3,5],[0,3,4,2,5,1,6],[2,1,3,4,6,5,0],[1,0,6,5,3,4,2],[4,6,5,1,2,0,3],[3,5,1,6,0,2,4]],"rs":[2,3,3,0,0,3],"rr":[40,100,60,0,0,60]},{"id":112,"tp":11,"mr":0,"sp":100,"g":[[5,2,0,3,4,6,1],[6,4,2,0,1,3,5],[0,3,4,2,5,1,6],[2,1,3,5,6,4,0],[1,0,6,4,3,5,2],[4,6,5,1,2,0,3],[3,5,1,6,0,2,4]],"rs":[2,3,3,0,0,3],"rr":[40,100,60,0,0,60]},{"id":113,"tp":11,"mr":0,"sp":100,"g":[[5,2,0,3,4,6,1],[6,4,2,0,1,3,5],[0,3,4,2,5,1,6],[2,1,6,4,3,5,0],[1,0,3,5,6,4,2],[4,6,5,1,2,0,3],[3,5,1,6,0,2,4]],"rs":[2,3,3,0,0,3],"rr":[40,100,60,0,0,60]},{"id":114,"tp":11,"mr":0,"sp":100,"g":[[5,2,0,3,4,6,1],[6,4,2,0,1,3,5],[0,3,4,2,5,1,6],[2,1,6,5,3,4,0],[1,0,3,4,6,5,2],[4,6,5,1,2,0,3],[3,5,1,6,0,2,4]],"rs":[2,3,3,0,0,3],"rr":[40,100,60,0,0,60]},{"id":115,"tp":11,"mr":0,"sp":100,"g":[[4,0,5,3,2,6,1],[6,4,2,0,1,3,5],[0,3,4,2,5,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[5,2,6,1,4,0,3],[3,5,1,6,0,2,4]],"rs":[1,3,3,0,1,3],"rr":[20,100,60,0,20,60]},{"id":116,"tp":11,"mr":0,"sp":100,"g":[[4,0,5,3,2,6,1],[6,4,2,0,1,3,5],[0,3,4,2,5,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[5,2,6,1,4,0,3],[3,5,1,6,0,2,4]],"rs":[1,3,3,0,1,3],"rr":[20,100,60,0,20,60]},{"id":117,"tp":11,"mr":0,"sp":100,"g":[[5,0,4,3,2,6,1],[6,4,2,0,1,3,5],[0,3,5,2,4,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[4,2,6,1,5,0,3],[3,5,1,6,0,2,4]],"rs":[1,3,3,0,1,3],"rr":[20,100,60,0,20,60]},{"id":118,"tp":11,"mr":0,"sp":100,"g":[[5,0,4,3,2,6,1],[6,4,2,0,1,3,5],[0,3,5,2,4,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[4,2,6,1,5,0,3],[3,5,1,6,0,2,4]],"rs":[1,3,3,0,1,3],"rr":[20,100,60,0,20,60]},{"id":119,"tp":11,"mr":0,"sp":100,"g":[[5,2,0,3,4,6,1],[6,5,2,0,1,3,4],[0,3,4,2,5,1,6],[2,1,3,4,6,5,0],[1,0,6,5,3,4,2],[4,6,5,1,2,0,3],[3,4,1,6,0,2,5]],"rs":[2,3,3,0,0,3],"rr":[40,100,60,0,0,60]},{"id":120,"tp":11,"mr":0,"sp":100,"g":[[5,2,0,3,4,6,1],[6,5,2,0,1,3,4],[0,3,4,2,5,1,6],[2,1,3,5,6,4,0],[1,0,6,4,3,5,2],[4,6,5,1,2,0,3],[3,4,1,6,0,2,5]],"rs":[2,3,3,0,0,3],"rr":[40,100,60,0,0,60]},{"id":121,"tp":11,"mr":0,"sp":100,"g":[[5,2,0,3,4,6,1],[6,5,2,0,1,3,4],[0,3,4,2,5,1,6],[2,1,6,4,3,5,0],[1,0,3,5,6,4,2],[4,6,5,1,2,0,3],[3,4,1,6,0,2,5]],"rs":[2,3,3,0,0,3],"rr":[40,100,60,0,0,60]},{"id":122,"tp":11,"mr":0,"sp":100,"g":[[5,2,0,3,4,6,1],[6,5,2,0,1,3,4],[0,3,4,2,5,1,6],[2,1,6,5,3,4,0],[1,0,3,4,6,5,2],[4,6,5,1,2,0,3],[3,4,1,6,0,2,5]],"rs":[2,3,3,0,0,3],"rr":[40,100,60,0,0,60]},{"id":123,"tp":11,"mr":0,"sp":100,"g":[[4,0,5,3,2,6,1],[6,5,2,0,1,3,4],[0,3,4,2,5,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[5,2,6,1,4,0,3],[3,4,1,6,0,2,5]],"rs":[1,3,3,0,1,3],"rr":[20,100,60,0,20,60]},{"id":124,"tp":11,"mr":0,"sp":100,"g":[[4,0,5,3,2,6,1],[6,5,2,0,1,3,4],[0,3,4,2,5,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[5,2,6,1,4,0,3],[3,4,1,6,0,2,5]],"rs":[1,3,3,0,1,3],"rr":[20,100,60,0,20,60]},{"id":125,"tp":11,"mr":0,"sp":100,"g":[[5,0,4,3,2,6,1],[6,5,2,0,1,3,4],[0,3,5,2,4,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[4,2,6,1,5,0,3],[3,4,1,6,0,2,5]],"rs":[1,3,3,0,1,3],"rr":[20,100,60,0,20,60]},{"id":126,"tp":11,"mr":0,"sp":100,"g":[[5,0,4,3,2,6,1],[6,5,2,0,1,3,4],[0,3,5,2,4,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[4,2,6,1,5,0,3],[3,4,1,6,0,2,5]],"rs":[1,3,3,0,1,3],"rr":[20,100,60,0,20,60]},{"id":127,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,0,3,6,1],[6,4,2,3,1,0,5],[0,3,5,2,4,1,6],[3,1,6,4,2,5,0],[1,0,3,5,6,4,2],[4,6,0,1,5,2,3],[2,5,1,6,0,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":128,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,0,3,6,1],[6,4,2,3,1,0,5],[0,3,5,2,4,1,6],[3,1,6,5,2,4,0],[1,0,3,4,6,5,2],[4,6,0,1,5,2,3],[2,5,1,6,0,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":129,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,0,3,6,1],[6,4,2,3,1,0,5],[0,3,4,2,5,1,6],[3,1,6,4,2,5,0],[1,0,3,5,6,4,2],[5,6,0,1,4,2,3],[2,5,1,6,0,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":130,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,0,3,6,1],[6,4,2,3,1,0,5],[0,3,4,2,5,1,6],[3,1,6,5,2,4,0],[1,0,3,4,6,5,2],[5,6,0,1,4,2,3],[2,5,1,6,0,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":131,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,0,3,6,1],[0,4,2,6,1,3,5],[3,0,4,2,5,1,6],[6,1,3,4,2,5,0],[1,3,6,5,0,4,2],[5,6,0,1,4,2,3],[2,5,1,3,6,0,4]],"rs":[1,3,2,1,0,3],"rr":[20,100,40,20,0,60]},{"id":132,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,0,3,6,1],[0,4,2,6,1,3,5],[3,0,4,2,5,1,6],[6,1,3,5,2,4,0],[1,3,6,4,0,5,2],[5,6,0,1,4,2,3],[2,5,1,3,6,0,4]],"rs":[1,3,2,1,0,3],"rr":[20,100,40,20,0,60]},{"id":133,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,0,3,6,1],[0,4,2,6,1,3,5],[3,0,5,2,4,1,6],[6,1,3,4,2,5,0],[1,3,6,5,0,4,2],[4,6,0,1,5,2,3],[2,5,1,3,6,0,4]],"rs":[1,3,2,1,0,3],"rr":[20,100,40,20,0,60]},{"id":134,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,0,3,6,1],[0,4,2,6,1,3,5],[3,0,5,2,4,1,6],[6,1,3,5,2,4,0],[1,3,6,4,0,5,2],[4,6,0,1,5,2,3],[2,5,1,3,6,0,4]],"rs":[1,3,2,1,0,3],"rr":[20,100,40,20,0,60]},{"id":135,"tp":10,"mr":0,"sp":100,"g":[[4,2,3,0,5,6,1],[0,4,2,6,1,3,5],[3,0,5,2,4,1,6],[2,1,6,4,3,5,0],[1,3,0,5,6,4,2],[5,6,4,1,2,0,3],[6,5,1,3,0,2,4]],"rs":[2,3,2,0,1,2],"rr":[40,100,40,0,20,40]},{"id":136,"tp":10,"mr":0,"sp":100,"g":[[4,2,3,0,5,6,1],[0,4,2,6,1,3,5],[3,0,5,2,4,1,6],[2,1,6,5,3,4,0],[1,3,0,4,6,5,2],[5,6,4,1,2,0,3],[6,5,1,3,0,2,4]],"rs":[2,3,2,0,1,2],"rr":[40,100,40,0,20,40]},{"id":137,"tp":10,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[6,4,2,3,1,0,5],[3,0,4,2,5,1,6],[4,1,6,5,3,2,0],[1,3,0,4,6,5,2],[0,6,5,1,2,4,3],[2,5,1,6,0,3,4]],"rs":[2,3,2,1,0,2],"rr":[40,100,40,20,0,40]},{"id":138,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,0,3,6,1],[6,5,2,3,1,0,4],[0,3,5,2,4,1,6],[3,1,6,4,2,5,0],[1,0,3,5,6,4,2],[4,6,0,1,5,2,3],[2,4,1,6,0,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":139,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,0,3,6,1],[6,5,2,3,1,0,4],[0,3,5,2,4,1,6],[3,1,6,5,2,4,0],[1,0,3,4,6,5,2],[4,6,0,1,5,2,3],[2,4,1,6,0,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":140,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,0,3,6,1],[6,5,2,3,1,0,4],[0,3,4,2,5,1,6],[3,1,6,4,2,5,0],[1,0,3,5,6,4,2],[5,6,0,1,4,2,3],[2,4,1,6,0,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":141,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,0,3,6,1],[6,5,2,3,1,0,4],[0,3,4,2,5,1,6],[3,1,6,5,2,4,0],[1,0,3,4,6,5,2],[5,6,0,1,4,2,3],[2,4,1,6,0,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":142,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,0,3,6,1],[0,5,2,6,1,3,4],[3,0,4,2,5,1,6],[6,1,3,4,2,5,0],[1,3,6,5,0,4,2],[5,6,0,1,4,2,3],[2,4,1,3,6,0,5]],"rs":[1,3,2,1,0,3],"rr":[20,100,40,20,0,60]},{"id":143,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,0,3,6,1],[0,5,2,6,1,3,4],[3,0,4,2,5,1,6],[6,1,3,5,2,4,0],[1,3,6,4,0,5,2],[5,6,0,1,4,2,3],[2,4,1,3,6,0,5]],"rs":[1,3,2,1,0,3],"rr":[20,100,40,20,0,60]},{"id":144,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,0,3,6,1],[0,5,2,6,1,3,4],[3,0,5,2,4,1,6],[6,1,3,4,2,5,0],[1,3,6,5,0,4,2],[4,6,0,1,5,2,3],[2,4,1,3,6,0,5]],"rs":[1,3,2,1,0,3],"rr":[20,100,40,20,0,60]},{"id":145,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,0,3,6,1],[0,5,2,6,1,3,4],[3,0,5,2,4,1,6],[6,1,3,5,2,4,0],[1,3,6,4,0,5,2],[4,6,0,1,5,2,3],[2,4,1,3,6,0,5]],"rs":[1,3,2,1,0,3],"rr":[20,100,40,20,0,60]},{"id":146,"tp":10,"mr":0,"sp":100,"g":[[4,2,3,0,5,6,1],[0,5,2,6,1,3,4],[3,0,5,2,4,1,6],[2,1,6,4,3,5,0],[1,3,0,5,6,4,2],[5,6,4,1,2,0,3],[6,4,1,3,0,2,5]],"rs":[2,3,2,0,1,2],"rr":[40,100,40,0,20,40]},{"id":147,"tp":10,"mr":0,"sp":100,"g":[[4,2,3,0,5,6,1],[0,5,2,6,1,3,4],[3,0,5,2,4,1,6],[2,1,6,5,3,4,0],[1,3,0,4,6,5,2],[5,6,4,1,2,0,3],[6,4,1,3,0,2,5]],"rs":[2,3,2,0,1,2],"rr":[40,100,40,0,20,40]},{"id":148,"tp":10,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[6,5,2,3,1,0,4],[3,0,4,2,5,1,6],[4,1,6,5,3,2,0],[1,3,0,4,6,5,2],[0,6,5,1,2,4,3],[2,4,1,6,0,3,5]],"rs":[2,3,2,1,0,2],"rr":[40,100,40,20,0,40]},{"id":149,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,3,0,6,1],[3,4,2,6,1,0,5],[0,3,4,2,5,1,6],[6,1,3,4,2,5,0],[1,0,6,5,3,4,2],[5,6,0,1,4,2,3],[2,5,1,0,6,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":150,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,3,0,6,1],[3,4,2,6,1,0,5],[0,3,4,2,5,1,6],[6,1,3,5,2,4,0],[1,0,6,4,3,5,2],[5,6,0,1,4,2,3],[2,5,1,0,6,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":151,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,3,0,6,1],[3,4,2,6,1,0,5],[0,3,5,2,4,1,6],[6,1,3,4,2,5,0],[1,0,6,5,3,4,2],[4,6,0,1,5,2,3],[2,5,1,0,6,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":152,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,3,0,6,1],[3,4,2,6,1,0,5],[0,3,5,2,4,1,6],[6,1,3,5,2,4,0],[1,0,6,4,3,5,2],[4,6,0,1,5,2,3],[2,5,1,0,6,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":153,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,3,0,6,1],[3,4,2,6,1,0,5],[0,3,4,2,5,1,6],[6,1,3,4,2,5,0],[1,6,0,5,3,4,2],[5,0,6,1,4,2,3],[2,5,1,0,6,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":154,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,3,0,6,1],[3,4,2,6,1,0,5],[0,3,4,2,5,1,6],[6,1,3,5,2,4,0],[1,6,0,4,3,5,2],[5,0,6,1,4,2,3],[2,5,1,0,6,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":155,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,3,0,6,1],[3,4,2,6,1,0,5],[0,3,5,2,4,1,6],[6,1,3,4,2,5,0],[1,6,0,5,3,4,2],[4,0,6,1,5,2,3],[2,5,1,0,6,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":156,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,3,0,6,1],[3,4,2,6,1,0,5],[0,3,5,2,4,1,6],[6,1,3,5,2,4,0],[1,6,0,4,3,5,2],[4,0,6,1,5,2,3],[2,5,1,0,6,3,4]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":157,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,3,0,6,1],[3,5,2,6,1,0,4],[0,3,4,2,5,1,6],[6,1,3,4,2,5,0],[1,0,6,5,3,4,2],[5,6,0,1,4,2,3],[2,4,1,0,6,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":158,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,3,0,6,1],[3,5,2,6,1,0,4],[0,3,4,2,5,1,6],[6,1,3,5,2,4,0],[1,0,6,4,3,5,2],[5,6,0,1,4,2,3],[2,4,1,0,6,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":159,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,3,0,6,1],[3,5,2,6,1,0,4],[0,3,5,2,4,1,6],[6,1,3,4,2,5,0],[1,0,6,5,3,4,2],[4,6,0,1,5,2,3],[2,4,1,0,6,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":160,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,3,0,6,1],[3,5,2,6,1,0,4],[0,3,5,2,4,1,6],[6,1,3,5,2,4,0],[1,0,6,4,3,5,2],[4,6,0,1,5,2,3],[2,4,1,0,6,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":161,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,3,0,6,1],[3,5,2,6,1,0,4],[0,3,4,2,5,1,6],[6,1,3,4,2,5,0],[1,6,0,5,3,4,2],[5,0,6,1,4,2,3],[2,4,1,0,6,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":162,"tp":10,"mr":0,"sp":100,"g":[[4,2,5,3,0,6,1],[3,5,2,6,1,0,4],[0,3,4,2,5,1,6],[6,1,3,5,2,4,0],[1,6,0,4,3,5,2],[5,0,6,1,4,2,3],[2,4,1,0,6,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":163,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,3,0,6,1],[3,5,2,6,1,0,4],[0,3,5,2,4,1,6],[6,1,3,4,2,5,0],[1,6,0,5,3,4,2],[4,0,6,1,5,2,3],[2,4,1,0,6,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":164,"tp":10,"mr":0,"sp":100,"g":[[5,2,4,3,0,6,1],[3,5,2,6,1,0,4],[0,3,5,2,4,1,6],[6,1,3,5,2,4,0],[1,6,0,4,3,5,2],[4,0,6,1,5,2,3],[2,4,1,0,6,3,5]],"rs":[1,3,3,1,0,2],"rr":[20,100,60,20,0,40]},{"id":165,"tp":9,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[0,4,2,6,1,3,5],[3,0,4,2,5,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[5,2,6,1,4,0,3],[6,5,1,3,0,2,4]],"rs":[1,3,2,0,1,2],"rr":[20,100,40,0,20,40]},{"id":166,"tp":9,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[0,4,2,6,1,3,5],[3,0,4,2,5,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[5,2,6,1,4,0,3],[6,5,1,3,0,2,4]],"rs":[1,3,2,0,1,2],"rr":[20,100,40,0,20,40]},{"id":167,"tp":9,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[0,4,2,6,1,3,5],[3,0,5,2,4,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[4,2,6,1,5,0,3],[6,5,1,3,0,2,4]],"rs":[1,3,2,0,1,2],"rr":[20,100,40,0,20,40]},{"id":168,"tp":9,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[0,4,2,6,1,3,5],[3,0,5,2,4,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[4,2,6,1,5,0,3],[6,5,1,3,0,2,4]],"rs":[1,3,2,0,1,2],"rr":[20,100,40,0,20,40]},{"id":169,"tp":9,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[0,4,2,6,1,3,5],[3,0,4,2,5,1,6],[2,1,6,4,3,5,0],[1,3,0,5,6,4,2],[4,6,5,1,2,0,3],[6,5,1,3,0,2,4]],"rs":[2,3,2,0,0,2],"rr":[40,100,40,0,0,40]},{"id":170,"tp":9,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[0,4,2,6,1,3,5],[3,0,4,2,5,1,6],[2,1,6,5,3,4,0],[1,3,0,4,6,5,2],[4,6,5,1,2,0,3],[6,5,1,3,0,2,4]],"rs":[2,3,2,0,0,2],"rr":[40,100,40,0,0,40]},{"id":171,"tp":9,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[0,5,2,6,1,3,4],[3,0,4,2,5,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[5,2,6,1,4,0,3],[6,4,1,3,0,2,5]],"rs":[1,3,2,0,1,2],"rr":[20,100,40,0,20,40]},{"id":172,"tp":9,"mr":0,"sp":100,"g":[[4,3,5,0,2,6,1],[0,5,2,6,1,3,4],[3,0,4,2,5,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[5,2,6,1,4,0,3],[6,4,1,3,0,2,5]],"rs":[1,3,2,0,1,2],"rr":[20,100,40,0,20,40]},{"id":173,"tp":9,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[0,5,2,6,1,3,4],[3,0,5,2,4,1,6],[2,1,3,4,6,5,0],[1,6,0,5,3,4,2],[4,2,6,1,5,0,3],[6,4,1,3,0,2,5]],"rs":[1,3,2,0,1,2],"rr":[20,100,40,0,20,40]},{"id":174,"tp":9,"mr":0,"sp":100,"g":[[5,3,4,0,2,6,1],[0,5,2,6,1,3,4],[3,0,5,2,4,1,6],[2,1,3,5,6,4,0],[1,6,0,4,3,5,2],[4,2,6,1,5,0,3],[6,4,1,3,0,2,5]],"rs":[1,3,2,0,1,2],"rr":[20,100,40,0,20,40]},{"id":175,"tp":9,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[0,5,2,6,1,3,4],[3,0,4,2,5,1,6],[2,1,6,4,3,5,0],[1,3,0,5,6,4,2],[4,6,5,1,2,0,3],[6,4,1,3,0,2,5]],"rs":[2,3,2,0,0,2],"rr":[40,100,40,0,0,40]},{"id":176,"tp":9,"mr":0,"sp":100,"g":[[5,2,3,0,4,6,1],[0,5,2,6,1,3,4],[3,0,4,2,5,1,6],[2,1,6,5,3,4,0],[1,3,0,4,6,5,2],[4,6,5,1,2,0,3],[6,4,1,3,0,2,5]],"rs":[2,3,2,0,0,2],"rr":[40,100,40,0,0,40]}]};
+
+const D = DATA;
+const R = D.residents;
+const ROT = D.rotations;
+const PR = D.prefResidents;
+const SP = D.softPrefs;
+const PT = D.prefTotals;
+const S = D.schedules;
+const TOTAL = S.length;
+
+// Build prefResidents index lookup
+const prIdx = {};
+PR.forEach((r, i) => prIdx[r] = i);
+
+// State
+const state = {
+    assignments: [],
+    minTotal: 0,
+    minFair: 0,
+    resFilter: null,
+    sortField: 'tp',
+    sortOrder: 'desc',
+    page: 1,
+    pageSize: 20,
+    filtered: [],
+};
+
+// ── Preference match ──
+function isPref(ri, bi, rotI) {
+    const res = R[ri];
+    const p = SP[res];
+    if (!p) return false;
+    const bp = p[String(bi + 1)];
+    if (!bp) return false;
+    return bp.includes(ROT[rotI]);
+}
+
+// ── Populate dynamic UI ──
+function initUI() {
+    document.getElementById('header-sub').textContent =
+        TOTAL.toLocaleString() + ' valid schedules for ' + R.length + ' residents across 7 blocks';
+
+    // Per-resident sort options
+    const sortSel = document.getElementById('sort-field');
+    PR.forEach((r, i) => {
+        const o = document.createElement('option');
+        o.value = 'rs_' + i;
+        o.textContent = r + "'s Score";
+        sortSel.appendChild(o);
+    });
+
+    // Resident filter dropdown
+    const resSel = document.getElementById('f-res-select');
+    PR.forEach((r, i) => {
+        const o = document.createElement('option');
+        o.value = i;
+        o.textContent = r + ' (' + PT[r] + ' prefs)';
+        resSel.appendChild(o);
+    });
+
+    addAssignmentFilter();
+}
+
+// ── Assignment filters ──
+let afCounter = 0;
+function addAssignmentFilter() {
+    const container = document.getElementById('assignment-filters');
+    if (container.children.length >= 5) return;
+
+    const id = afCounter++;
+    const div = document.createElement('div');
+    div.className = 'assignment-filter-row';
+    div.dataset.id = id;
+
+    let h = '<select class="af-res" onchange="onFilterChange()"><option value="">Any Resident</option>';
+    R.forEach((r, i) => h += '<option value="' + i + '">' + r + '</option>');
+    h += '</select><span class="connector">on</span>';
+    h += '<select class="af-rot" onchange="onFilterChange()"><option value="">Any Rotation</option>';
+    ROT.forEach((r, i) => h += '<option value="' + i + '">' + r + '</option>');
+    h += '</select><span class="connector">in</span>';
+    h += '<select class="af-blk" onchange="onFilterChange()"><option value="">Any Block</option>';
+    for (let b = 1; b <= 7; b++) h += '<option value="' + (b-1) + '">Block ' + b + '</option>';
+    h += '</select>';
+    h += '<button class="btn-remove" onclick="removeAF(' + id + ')">&times;</button>';
+
+    div.innerHTML = h;
+    container.appendChild(div);
+}
+
+function removeAF(id) {
+    const el = document.querySelector('.assignment-filter-row[data-id="' + id + '"]');
+    if (el) el.remove();
+    onFilterChange();
+}
+
+function readAssignmentFilters() {
+    const rows = document.querySelectorAll('.assignment-filter-row');
+    const filters = [];
+    rows.forEach(row => {
+        const res = row.querySelector('.af-res').value;
+        const rot = row.querySelector('.af-rot').value;
+        const blk = row.querySelector('.af-blk').value;
+        if (res !== '' && rot !== '' && blk !== '') {
+            filters.push({ res: +res, rot: +rot, blk: +blk });
+        }
+    });
+    return filters;
+}
+
+// ── Filtering ──
+function applyFilters() {
+    const af = readAssignmentFilters();
+    const minT = state.minTotal;
+    const minF = state.minFair;
+    const rf = state.resFilter;
+
+    const result = [];
+    for (let i = 0; i < TOTAL; i++) {
+        const s = S[i];
+        if (s.tp < minT) continue;
+        if (s.mr < minF) continue;
+        if (rf !== null && s.rs[rf.idx] < rf.min) continue;
+
+        let ok = true;
+        for (let j = 0; j < af.length; j++) {
+            if (s.g[af[j].res][af[j].blk] !== af[j].rot) { ok = false; break; }
+        }
+        if (!ok) continue;
+
+        result.push(i);
+    }
+    state.filtered = result;
+    state.page = 1;
+}
+
+// ── Sorting ──
+function applySort() {
+    const f = state.sortField;
+    const desc = state.sortOrder === 'desc';
+
+    state.filtered.sort((a, b) => {
+        const sa = S[a], sb = S[b];
+        let va, vb;
+        if (f === 'tp') { va = sa.tp; vb = sb.tp; }
+        else if (f === 'mr') { va = sa.mr; vb = sb.mr; }
+        else if (f === 'sp') { va = sa.sp; vb = sb.sp; }
+        else if (f.startsWith('rs_')) {
+            const idx = +f.split('_')[1];
+            va = sa.rs[idx]; vb = sb.rs[idx];
+        }
+        if (va === vb) {
+            // secondary sort by total then fairness
+            if (sa.tp !== sb.tp) return desc ? sb.tp - sa.tp : sa.tp - sb.tp;
+            return desc ? sb.mr - sa.mr : sa.mr - sb.mr;
+        }
+        return desc ? vb - va : va - vb;
+    });
+}
+
+// ── Rendering ──
+function renderStats() {
+    const fl = state.filtered;
+    const n = fl.length;
+    document.getElementById('stat-count').textContent = n.toLocaleString();
+    document.getElementById('stat-count-sub').textContent =
+        n === TOTAL ? 'of ' + TOTAL.toLocaleString() + ' total' : 'of ' + TOTAL.toLocaleString() + ' total (filtered)';
+
+    if (n === 0) {
+        document.getElementById('stat-score').textContent = '—';
+        document.getElementById('stat-avg').textContent = '—';
+        document.getElementById('stat-fair').textContent = '—';
+        return;
+    }
+
+    let minT = 28, maxT = 0, sumT = 0, bestMR = 0;
+    for (const i of fl) {
+        const s = S[i];
+        if (s.tp < minT) minT = s.tp;
+        if (s.tp > maxT) maxT = s.tp;
+        sumT += s.tp;
+        if (s.mr > bestMR) bestMR = s.mr;
+    }
+    document.getElementById('stat-score').textContent = minT + '–' + maxT;
+    document.getElementById('stat-avg').textContent = (sumT / n).toFixed(1);
+    document.getElementById('stat-fair').textContent = bestMR + '%';
+}
+
+function renderResultsBar() {
+    const n = state.filtered.length;
+    const start = (state.page - 1) * state.pageSize + 1;
+    const end = Math.min(state.page * state.pageSize, n);
+    const bar = document.getElementById('results-bar');
+    if (n === 0) {
+        bar.innerHTML = 'No schedules match your filters';
+    } else {
+        bar.innerHTML = 'Showing <strong>' + start + '–' + end + '</strong> of <strong>' + n.toLocaleString() + '</strong> matching schedules';
+    }
+}
+
+function scoreClass(met, total) {
+    if (total === 0) return 'score-none';
+    const rate = met / total;
+    if (rate >= 0.6) return 'score-high';
+    if (rate >= 0.3) return 'score-mid';
+    return 'score-low';
+}
+
+function renderCards() {
+    const container = document.getElementById('schedule-grid');
+    const fl = state.filtered;
+    const n = fl.length;
+    if (n === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">&#x1F50D;</div><p>No schedules match your current filters.<br>Try adjusting or resetting your filters.</p></div>';
+        return;
+    }
+
+    const start = (state.page - 1) * state.pageSize;
+    const end = Math.min(start + state.pageSize, n);
+    let html = '';
+
+    for (let p = start; p < end; p++) {
+        const s = S[fl[p]];
+        // Card
+        html += '<div class="schedule-card">';
+
+        // Header
+        html += '<div class="card-header">';
+        html += '<span class="card-rank">#' + s.id + '</span>';
+        html += '<div class="card-meta">';
+        html += '<span>Score: <span class="val">' + s.tp + '/28</span></span>';
+        html += '<span>Min Rate: <span class="val">' + s.mr + '%</span></span>';
+        html += '<span>Spread: <span class="val">' + s.sp + '%</span></span>';
+        html += '</div></div>';
+
+        // Score pills
+        html += '<div class="card-scores">';
+        for (let i = 0; i < PR.length; i++) {
+            const cls = scoreClass(s.rs[i], PT[PR[i]]);
+            html += '<span class="score-pill ' + cls + '">' + PR[i] + ': ' + s.rs[i] + '/' + PT[PR[i]] + '</span>';
+        }
+        html += '</div>';
+
+        // Desktop: Grid table
+        html += '<div class="table-wrap"><table class="schedule-table">';
+        html += '<thead><tr><th>Resident</th>';
+        for (let b = 1; b <= 7; b++) html += '<th>Block ' + b + '</th>';
+        html += '<th>Prefs</th></tr></thead><tbody>';
+
+        for (let ri = 0; ri < 7; ri++) {
+            html += '<tr><td>' + R[ri] + '</td>';
+            for (let bi = 0; bi < 7; bi++) {
+                const rotI = s.g[ri][bi];
+                const match = isPref(ri, bi, rotI);
+                html += '<td class="rot-' + rotI + (match ? ' pref-match' : '') + '">' + ROT[rotI] + '</td>';
+            }
+            const pi = prIdx[R[ri]];
+            if (pi !== undefined) {
+                html += '<td>' + s.rs[pi] + '/' + PT[R[ri]] + '</td>';
+            } else {
+                html += '<td style="color:#9ca3af">—</td>';
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table></div>';
+
+        // Mobile: stacked cards per resident
+        html += '<div class="mobile-schedule">';
+        for (let ri = 0; ri < 7; ri++) {
+            const pi = prIdx[R[ri]];
+            const scoreStr = pi !== undefined ? s.rs[pi] + '/' + PT[R[ri]] : '—';
+            html += '<div class="mobile-res-card">';
+            html += '<div class="mobile-res-header"><span>' + R[ri] + '</span><span class="mobile-res-score">' + scoreStr + '</span></div>';
+            html += '<div class="mobile-res-grid">';
+            for (let bi = 0; bi < 7; bi++) {
+                const rotI = s.g[ri][bi];
+                const match = isPref(ri, bi, rotI);
+                // Abbreviate rotation names for mobile
+                const abbr = ROT[rotI].length > 6 ? ROT[rotI].substring(0, 6) : ROT[rotI];
+                html += '<div class="mob-cell rot-' + rotI + (match ? ' pref-match' : '') + '"><span class="mob-label">B' + (bi+1) + '</span>' + abbr + '</div>';
+            }
+            html += '</div></div>';
+        }
+        html += '</div>';
+
+        html += '</div>';
+    }
+
+    container.innerHTML = html;
+}
+
+function renderPagination() {
+    const n = state.filtered.length;
+    const totalPages = Math.max(1, Math.ceil(n / state.pageSize));
+    const pg = document.getElementById('pagination');
+
+    if (n <= state.pageSize) { pg.innerHTML = ''; return; }
+
+    let html = '';
+    html += '<button class="btn-page" onclick="goPage(1)"' + (state.page <= 1 ? ' disabled' : '') + '>&laquo;</button>';
+    html += '<button class="btn-page" onclick="goPage(' + (state.page - 1) + ')"' + (state.page <= 1 ? ' disabled' : '') + '>&lsaquo; Prev</button>';
+
+    // Page numbers - show up to 7 pages around current
+    let pStart = Math.max(1, state.page - 3);
+    let pEnd = Math.min(totalPages, pStart + 6);
+    if (pEnd - pStart < 6) pStart = Math.max(1, pEnd - 6);
+
+    for (let p = pStart; p <= pEnd; p++) {
+        if (p === state.page) {
+            html += '<button class="btn-page" style="background:#1e3a5f;color:white;border-color:#1e3a5f">' + p + '</button>';
+        } else {
+            html += '<button class="btn-page" onclick="goPage(' + p + ')">' + p + '</button>';
+        }
+    }
+
+    html += '<button class="btn-page" onclick="goPage(' + (state.page + 1) + ')"' + (state.page >= totalPages ? ' disabled' : '') + '>Next &rsaquo;</button>';
+    html += '<button class="btn-page" onclick="goPage(' + totalPages + ')"' + (state.page >= totalPages ? ' disabled' : '') + '>&raquo;</button>';
+    html += '<span class="page-info">Page <strong>' + state.page + '</strong> of <strong>' + totalPages + '</strong></span>';
+
+    pg.innerHTML = html;
+}
+
+function goPage(p) {
+    const totalPages = Math.ceil(state.filtered.length / state.pageSize);
+    state.page = Math.max(1, Math.min(p, totalPages));
+    renderResultsBar();
+    renderCards();
+    renderPagination();
+    document.getElementById('schedule-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Event Handlers ──
+function onFilterChange() {
+    state.minTotal = +document.getElementById('f-min-total').value;
+    document.getElementById('f-min-total-val').textContent = state.minTotal;
+
+    state.minFair = +document.getElementById('f-min-fair').value;
+    document.getElementById('f-min-fair-val').textContent = state.minFair + '%';
+
+    const resSel = document.getElementById('f-res-select').value;
+    const resMin = +document.getElementById('f-res-min').value;
+    document.getElementById('f-res-min-val').textContent = resMin;
+    if (resSel !== '') {
+        state.resFilter = { idx: +resSel, min: resMin };
+    } else {
+        state.resFilter = null;
+    }
+
+    applyFilters();
+    applySort();
+    render();
+}
+
+function onSortChange() {
+    state.sortField = document.getElementById('sort-field').value;
+    state.sortOrder = document.getElementById('sort-order').value;
+    applySort();
+    state.page = 1;
+    render();
+}
+
+function render() {
+    renderStats();
+    renderResultsBar();
+    renderCards();
+    renderPagination();
+}
+
+// ── Presets ──
+function resetAll() {
+    document.getElementById('f-min-total').value = 0;
+    document.getElementById('f-min-fair').value = 0;
+    document.getElementById('f-res-select').value = '';
+    document.getElementById('f-res-min').value = 0;
+    document.getElementById('sort-field').value = 'tp';
+    document.getElementById('sort-order').value = 'desc';
+
+    // Clear assignment filters
+    const container = document.getElementById('assignment-filters');
+    container.innerHTML = '';
+    addAssignmentFilter();
+
+    state.minTotal = 0;
+    state.minFair = 0;
+    state.resFilter = null;
+    state.sortField = 'tp';
+    state.sortOrder = 'desc';
+
+    applyFilters();
+    applySort();
+    render();
+}
+
+function applyPreset(name) {
+    resetAll();
+    if (name === 'best') {
+        document.getElementById('sort-field').value = 'tp';
+        state.sortField = 'tp';
+    } else if (name === 'fair') {
+        document.getElementById('sort-field').value = 'mr';
+        state.sortField = 'mr';
+    } else {
+        // Per-resident presets
+        const resMap = { constant: 'Constant', kwon: 'Kwon', law: 'Law', pius: 'Pius', schroeder: 'Schroeder', skaggs: 'Skaggs' };
+        const rName = resMap[name];
+        if (rName) {
+            const idx = PR.indexOf(rName);
+            if (idx >= 0) {
+                document.getElementById('sort-field').value = 'rs_' + idx;
+                state.sortField = 'rs_' + idx;
+            }
+        }
+    }
+    state.sortOrder = 'desc';
+    document.getElementById('sort-order').value = 'desc';
+    applySort();
+    state.page = 1;
+    render();
+}
+
+// ── Init ──
+function init() {
+    initUI();
+    state.filtered = S.map((_, i) => i);
+    applySort();
+    render();
+}
+
+init();
+
+    </script>
+</body>
+</html>
