@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rahul Mitra</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Charter', 'Bitstream Charter', 'Georgia', serif;
+            color: #222;
+            background: #fafafa;
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        .affiliation {
+            color: #666;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+        }
+
+        .nav {
+            margin-bottom: 48px;
+            font-size: 0.9rem;
+        }
+
+        .nav a {
+            color: #555;
+            text-decoration: none;
+            margin-right: 20px;
+            transition: color 0.15s;
+        }
+
+        .nav a:hover {
+            color: #000;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #888;
+            margin-bottom: 12px;
+        }
+
+        .section p {
+            font-size: 1rem;
+            color: #333;
+        }
+
+        .section p + p {
+            margin-top: 12px;
+        }
+
+        .links a {
+            color: #222;
+            text-decoration: none;
+            border-bottom: 1px solid #ccc;
+            transition: border-color 0.15s;
+        }
+
+        .links a:hover {
+            border-color: #222;
+        }
+
+        ul.writing-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        ul.writing-list li {
+            margin-bottom: 12px;
+        }
+
+        ul.writing-list a {
+            color: #222;
+            text-decoration: none;
+            border-bottom: 1px solid #ccc;
+            transition: border-color 0.15s;
+        }
+
+        ul.writing-list a:hover {
+            border-color: #222;
+        }
+
+        ul.writing-list .desc {
+            color: #888;
+            font-size: 0.88rem;
+        }
+
+        .contact {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .contact a {
+            color: #444;
+            text-decoration: none;
+            border-bottom: 1px solid #ddd;
+            transition: border-color 0.15s;
+        }
+
+        .contact a:hover {
+            border-color: #444;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 48px 20px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Rahul Mitra</h1>
+        <p class="affiliation">Researcher</p>
+
+        <nav class="nav">
+            <a href="#about">About</a>
+            <a href="#writing">Writing</a>
+            <a href="#contact">Contact</a>
+        </nav>
+
+        <div class="section" id="about">
+            <h2>About</h2>
+            <p>
+                I'm a researcher interested in machine learning and deep learning.
+                This site collects some of my notes and projects.
+            </p>
+        </div>
+
+        <div class="section" id="writing">
+            <h2>Writing</h2>
+            <ul class="writing-list">
+                <li>
+                    <a href="backprop.html">Backpropagation for a Single Perceptron</a>
+                    <br><span class="desc">Chain-rule derivations for common loss functions</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="section" id="contact">
+            <h2>Contact</h2>
+            <p class="contact">
+                <a href="https://github.com/rahulmitra">GitHub</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
