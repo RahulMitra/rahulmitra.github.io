@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 640px;
+            max-width: 860px;
             margin: 0 auto;
             padding: 80px 24px;
         }
@@ -146,13 +146,124 @@
             border-color: #444;
         }
 
-        @media (max-width: 480px) {
+        /* Timeline */
+        .timeline {
+            position: relative;
+        }
+
+        .timeline-entry {
+            display: grid;
+            grid-template-columns: 120px 20px 1fr;
+            gap: 0 16px;
+            min-height: 80px;
+            position: relative;
+        }
+
+        .timeline-entry .line {
+            grid-column: 2;
+            grid-row: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+        }
+
+        .timeline-entry .line::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #ddd;
+        }
+
+        .timeline-entry:first-child .line::before {
+            top: 8px;
+        }
+
+        .timeline-entry:last-child .line::before {
+            bottom: calc(100% - 10px);
+        }
+
+        .timeline-entry .line .dot {
+            width: 10px;
+            height: 10px;
+            background: #888;
+            border-radius: 50%;
+            position: relative;
+            top: 7px;
+            z-index: 1;
+        }
+
+        .timeline-entry .dates {
+            grid-column: 1;
+            text-align: right;
+            font-size: 0.88rem;
+            color: #888;
+            padding-top: 4px;
+            white-space: nowrap;
+        }
+
+        .timeline-entry .content {
+            grid-column: 3;
+            padding-bottom: 48px;
+        }
+
+        .timeline-entry:last-child .content {
+            padding-bottom: 0;
+        }
+
+        .content .inner {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .content .logo {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .content .text .role {
+            font-weight: 600;
+            font-size: 1.05rem;
+            color: #222;
+        }
+
+        .content .text .company {
+            color: #555;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 540px) {
             .container {
                 padding: 48px 20px;
             }
 
             h1 {
                 font-size: 1.5rem;
+            }
+
+            .timeline-entry {
+                grid-template-columns: 20px 1fr;
+                gap: 0 12px;
+            }
+
+            .timeline-entry .dates {
+                grid-column: 2;
+                text-align: left;
+                margin-bottom: 2px;
+            }
+
+            .timeline-entry .line {
+                grid-column: 1;
+                grid-row: 1 / span 2;
+            }
+
+            .timeline-entry .content {
+                grid-column: 2;
             }
         }
     </style>
@@ -169,6 +280,7 @@
 
         <nav class="nav">
             <a href="#about">About</a>
+            <a href="#career">Career</a>
             <a href="#writing">Writing</a>
             <a href="#contact">Contact</a>
         </nav>
@@ -179,6 +291,64 @@
                 I'm a researcher interested in machine learning and deep learning.
                 This site collects some of my notes and projects.
             </p>
+        </div>
+
+        <div class="section" id="career">
+            <h2>Career</h2>
+            <div class="timeline">
+                <div class="timeline-entry">
+                    <div class="dates">2020 &ndash; Present</div>
+                    <div class="line"><div class="dot"></div></div>
+                    <div class="content">
+                        <div class="inner">
+                            <img src="meta.png" alt="Meta" class="logo">
+                            <div class="text">
+                                <div class="role">Senior Staff Research Engineer & Manager</div>
+                                <div class="company">Meta Superintelligence Labs (MSL)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="timeline-entry">
+                    <div class="dates">2019 &ndash; 2020</div>
+                    <div class="line"><div class="dot"></div></div>
+                    <div class="content">
+                        <div class="inner">
+                            <img src="vmware.jpg" alt="VMware" class="logo">
+                            <div class="text">
+                                <div class="role">Staff Software Engineer, Tech Lead</div>
+                                <div class="company">VMware</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="timeline-entry">
+                    <div class="dates">2017 &ndash; 2019</div>
+                    <div class="line"><div class="dot"></div></div>
+                    <div class="content">
+                        <div class="inner">
+                            <img src="avi-networks.png" alt="Avi Networks" class="logo">
+                            <div class="text">
+                                <div class="role">Senior Member of Technical Staff</div>
+                                <div class="company">Avi Networks</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="timeline-entry">
+                    <div class="dates">2015 &ndash; 2017</div>
+                    <div class="line"><div class="dot"></div></div>
+                    <div class="content">
+                        <div class="inner">
+                            <img src="stacksware.jpg" alt="StacksWare" class="logo">
+                            <div class="text">
+                                <div class="role">Co-Founder</div>
+                                <div class="company">StacksWare</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="section" id="writing">
